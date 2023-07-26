@@ -3,7 +3,6 @@ from scipy.stats import poisson
 
 
 class Hospital():
-
     def __init__(self, availableBeds, initialBedsNormal, initialBedsCovid, N, discountRate) -> None:
         self.availableBeds = availableBeds
         self.initialBedsNormal = initialBedsNormal
@@ -12,8 +11,7 @@ class Hospital():
         self.discountRate = discountRate
 
 
-class poisson_:
-
+class poisson_():
     def __init__(self, λ):
         self.λ = λ
 
@@ -45,7 +43,6 @@ class poisson_:
                     break
 
         # normalizing the pmf, values of n outside of [α, β] have pmf = 0
-
         added_val = (1-summer)/(self.β-self.α)
         for key in self.vals:
             self.vals[key] += added_val
@@ -68,7 +65,6 @@ class Beds():
 
 
 class Agent():
-
     def __init__(self, hospital, value, policy, eValue) -> None:
         self.hospital = hospital
         self.value = value
@@ -86,13 +82,14 @@ class Agent():
         return costVal
 
     def expectedReward(self, state, action):
-        self.hospital.initialBedsNormal = self.hospital.availableBeds[0]
-        self.hospital.initialBedsCovid = self.hospital.availableBeds[1]
+        # Copy the initial available beds to preserve the original values
+        temp_available_beds = self.hospital.availableBeds.copy()
+        
         initialReward = 0
         new_state = [min(max((state[0] - action), 0), self.hospital.N),
                      min(max((state[1] + action), 0), self.hospital.N)]
         if action > 0:
-            initialReward += -1*self.cost(0, 0, 0, 0, state[0] - action)
+            initialReward += -1 * self.cost(0, 0, 0, 0, state[0] - action)
         self.hospital.availableBeds[0] = new_state[0]
         self.hospital.availableBeds[1] = new_state[1]
 
@@ -126,8 +123,9 @@ class Agent():
                             initialReward += probability * \
                                 (rnew + self.hospital.discountRate *
                                  self.value[new_state[0]][new_state[1]])
-            self.hospital.availableBeds[0] = new_state[0]
-            self.hospital.availableBeds[1] = new_state[1]
+
+            # Restore the original available beds for the next iteration
+            self.hospital.availableBeds = temp_available_beds.copy()
         return initialReward
 
     def policy_improvement(self):
@@ -139,12 +137,13 @@ class Agent():
                 max_act_val = None
                 max_act = None
 
+                # Calculate the range of valid actions based on available beds
                 minPossibleAction = self.hospital.availableBeds[1]
                 maxPossibleAction = self.hospital.availableBeds[0]
 
                 for act in range(-1*minPossibleAction, maxPossibleAction):
                     sigma = self.expectedReward([i, j], act)
-                    if max_act_val == None:
+                    if max_act_val is None:
                         max_act_val = sigma
                         max_act = act
                     elif max_act_val < sigma:
@@ -162,5 +161,5 @@ agent = Agent(hospital, np.zeros((hospital.N+1, hospital.N+1)),
 
 while(1):
     p = agent.policy_improvement()
-    if p == True:
+    if p:
         break
